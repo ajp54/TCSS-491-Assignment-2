@@ -1,6 +1,3 @@
-//captures the varaibles of all circles in the scene
-let entityData = [];
-
 
 // GameBoard code below
 
@@ -19,7 +16,7 @@ function Circle(game) {
     this.color = "rgb(255, 255, 255)";
     this.foodEaten = 0;
     this.secondsUntilStarve = 10;
-    this.reproduceCount = 2;
+    this.reproduceCount = 1;
     this.setPrey();
     Entity.call(this, game, this.radius + Math.random() * (1200 - this.radius * 2), this.radius + Math.random() * (700 - this.radius * 2));
 
@@ -43,7 +40,7 @@ Circle.prototype.setPreditor = function () {
     this.visualRadius = 500;
     this.color = "rgb(255, 0, 0)";
     this.speed = 100
-    this.maxSpeed = 250;
+    this.maxSpeed = 210;
     this.reproduceCount = 2;
 };
 
@@ -56,7 +53,7 @@ Circle.prototype.setPrey = function () {
     this.color = "rgb(255, 255, 255)";
     this.speed = 80
     this.maxSpeed = 200;
-    this.reproduceCount = 2;
+    this.reproduceCount = 1;
 };
 
 Circle.prototype.setFood = function () {
@@ -114,7 +111,7 @@ Circle.prototype.update = function () {
         //chance that cell mutates into a preditor
         var rand = Math.floor(Math.random() * 100);
         //console.log("random number:" + rand);
-        if (rand < 10) {
+        if (rand < 7) {
             circle.setPreditor();
         } else {
             circle.setPrey();
@@ -143,7 +140,7 @@ Circle.prototype.update = function () {
             circle.setPreditor();
             this.game.addEntity(circle);
             this.foodEaten -= 3;
-            this.secondsUntilStarve = 7
+            //this.secondsUntilStarve = 7
             //this.radius += 10;
             this.speed -= 15;
             // console.log("added preditor");
@@ -200,14 +197,16 @@ Circle.prototype.update = function () {
             if (this.preditor && ent.prey) {
                 ent.removeFromWorld = true;
                 this.foodEaten++;
+                this.secondsUntilStarve += 2;
                 //console.log("food eaten: " +  this.foodEaten);
             }
             else if (ent.preditor && this.prey) {
                 this.removeFromWorld = true;
                 ent.foodEaten++;
+                ent.secondsUntilStarve += 2;
                 //console.log("food eaten: " +  ent.foodEaten);
             }
-            if (this.prey && ent.plant) {
+            if (this.prey && ent.food) {
                 ent.removeFromWorld = true;
                 this.foodEaten++;
                 //console.log("food eaten: " +  this.foodEaten);
@@ -363,9 +362,15 @@ let posOrNeg = function () {
 
 }
 
+// Assignment 3 code
 let captureState = function (game) {
-    game.forEach(circle => {
-        entityData.push({
+    for(let i = 0; i < game.entities.length; i++) {
+        let circle = game.entities[i];
+        var vX = circle.velocity.x;
+        var vY = circle.velocity.y;
+        game.entityData.push({
+            x: circle.x,
+            y: circle.y,
             player: circle.player,
             startRadius: circle.startRadius,
             radius: circle.radius,
@@ -375,15 +380,30 @@ let captureState = function (game) {
             secondsUntilStarve: circle.secondsUntilStarve,
             reproduceCount: circle.reproduceCount,
             class: circle.class,
+            preditor: circle.preditor,
+            prey: circle.prey,
+            food: circle.food,
             speed: circle.speed,
-            maxSpeed: circle.maxSpeed
+            maxSpeed: circle.maxSpeed,
+            velocityX: vX,
+            velocityY: vY
         })
-    });
+    }
 }
 
 let loadState = function (game, data) {
-    let circle = new Circle(game);
-    data.forEach(element => {
+    // first clear all entities from the game engine
+    for(let i = 0; i < game.entities.length; i++) {
+        game.entities[i].removeFromWorld = true;
+    }
+
+    
+    for(let i = 0; i < data.length; i++) {
+        let circle = new Circle(game);
+        let element = data[i];
+
+        circle.x = element.x;
+        circle.y = element.y;
         circle.player = element.player;
         circle.startRadius = element.startRadius;
         circle.radius = element.radius;
@@ -393,10 +413,22 @@ let loadState = function (game, data) {
         circle.secondsUntilStarve = element.secondsUntilStarve;
         circle.reproduceCount = element.reproduceCount;
         circle.class = element.class;
+        circle.preditor = element.preditor;
+        circle.prey = element.prey;
+        circle.food = element.food;
+        circle.speed,
         circle.speed = element.speed;
         circle.maxSpeed = element.maxSpeed;
-    });
+        circle.velocity.x = element.velocityX;
+        circle.velocity.x = element.velocityY;
+        
+        game.addEntity(circle);
+    }
+    console.log("finished loading scene");
 }
+
+
+  
 
 // the "main" code begins here
 var friction = 1;
@@ -447,4 +479,30 @@ ASSET_MANAGER.downloadAll(function () {
         circle.setFood();
         gameEngine.addEntity(circle);
     }, 1000);
+
+
+    window.onload = function () {
+        var socket = io.connect("http://24.16.255.56:8888");
+      
+        socket.on("load", function (message) {
+            gameEngine.entityData = message.data;
+            loadState(gameEngine, message.data);
+        });
+      
+        var saveButton = document.getElementById("save");
+        var loadButton = document.getElementById("load");
+      
+        saveButton.onclick = function () {
+          console.log("save");
+          captureState(gameEngine);
+          socket.emit("save", { studentname: "Anders Pedersen", statename: "aState", data: gameEngine.entityData });
+        };
+      
+        loadButton.onclick = function () {
+          console.log("load");
+          socket.emit("load", { studentname: "Anders Pedersen", statename: "aState" });
+        };
+      
+      };
+    
 });

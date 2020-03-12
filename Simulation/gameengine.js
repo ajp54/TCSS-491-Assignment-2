@@ -30,6 +30,7 @@ Timer.prototype.tick = function () {
 
 function GameEngine() {
     this.entities = [];
+    this.entityData = [];
     this.showOutlines = false;
     this.ctx = null;
     this.click = null;
@@ -95,7 +96,7 @@ GameEngine.prototype.startInput = function () {
 }
 
 GameEngine.prototype.addEntity = function (entity) {
-    // console.log('added entity');
+    console.log('added entity');
     this.entities.push(entity);
 }
 
